@@ -1,0 +1,44 @@
+{
+	auto_https off
+	admin off
+}
+
+:{$PORT:3000} {
+	root * /app/dist
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+	}
+
+	@wasm path *.wasm
+	header @wasm Content-Type "application/wasm"
+
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	@db path /db/*.duckdb
+	header @db Cache-Control "public, max-age=86400"
+
+	@extensions path /extensions/*
+	header @extensions {
+		Cache-Control "no-cache"
+		Access-Control-Allow-Origin "*"
+	}
+
+	@html path / /index.html
+	header @html Cache-Control "no-cache"
+
+	handle @db {
+		file_server {
+			precompressed zstd gzip
+		}
+	}
+
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}
