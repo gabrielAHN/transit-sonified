@@ -473,7 +473,7 @@ class Player {
     const dt = Math.min(0.1, (perf - this.lastFrame) / 1000)
     this.lastFrame = perf
     const ctx = CitySound.ctx
-    if (CitySound.unlocked && ctx && ctx.state !== 'running') { requestAnimationFrame(this.frameLoop); return }
+    if (CitySound.unlocked && ctx && (ctx.state !== 'running' || CitySound.loading)) { requestAnimationFrame(this.frameLoop); return }
     CitySound.setActivity(this.activityAt(this.cursor))
     CitySound.tempo(dt)
     if (!this.switching) {
@@ -505,7 +505,8 @@ class Player {
   private stationNote (s: Station, fromTap = false) {
     CitySound.ensureContext(); CitySound.setVolume(this.volume); CitySound.setCity(this.city)
     if (!CitySound.unlocked && !fromTap) { this.showHint(); return }
-    CitySound.playNote({ freq: s.freq, pan: s.pan, hue: s.hue, velocity: 0.8 })
+    CitySound.scheduleTime = this.cursor
+    CitySound.playNote({ freq: s.freq, pan: s.pan, velocity: 0.8 })
   }
 
   private onHover = ({ object }: any) => {

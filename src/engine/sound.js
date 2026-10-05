@@ -1,3 +1,6 @@
+let S = null
+const engine = import('./strudel.js').then((m) => { S = m; return m })
+
 export const CITY_SCALES = {
   nyc: { scale: [0, 2, 3, 5, 7, 9, 10], lowMidi: 62, octaves: 2 },
   madrid: { scale: [0, 1, 4, 5, 7, 8, 10], lowMidi: 52, octaves: 2 },
@@ -5,219 +8,130 @@ export const CITY_SCALES = {
   hongkong: { scale: [0, 2, 4, 7, 9], lowMidi: 60, octaves: 2 }
 }
 
-const CITY_MIX = {
+export const CITY_CODE = {
   nyc: {
-    lead: 'epiano', hit: 'brush', bpm: [84, 106], ring: 0.9,
-    chords: [[2, 5, 9, 0, 4], [7, 11, 5, 4, 9], [0, 4, 7, 11, 2], [9, 1, 7, 10, 4]], chordMinutes: 20,
-    floor: 0.45, trim: 0.35, solo: 21,
-    low: [180, 3], high: [4500, -4], comp: [-20, 3.5], reverb: 0.3, echo: 0.49, echoMix: 0.12, width: 0.85
+    voice: 's("gm_epiano1").room(.3).roomsize(3).delay(.12).delaytime(.49).delayfeedback(.28).lpf(4500)',
+    hit: 's("white").hpf(5000).decay(.12).sustain(0).gain(.5)'
   },
   madrid: {
-    lead: 'guitar', hit: 'palma', bpm: [92, 124], ring: 0.8,
-    chords: [[9, 0, 4], [7, 11, 2], [5, 9, 0], [4, 8, 11]], chordMinutes: 15,
-    floor: 0.45, trim: 1.36, solo: 9,
-    low: [220, 1], high: [3800, 0], comp: [-18, 3], reverb: 0.24, echo: 0.29, echoMix: 0.08, width: 0.7
+    voice: 's("gm_acoustic_guitar_nylon").room(.24).roomsize(1.6).delay(.08).delaytime(.29).delayfeedback(.25).lpf(3800)',
+    hit: 's("pink").bandf(1500).bandq(1.1).decay(.07).sustain(0).gain(.7)'
   },
   tokyo: {
-    lead: 'bell', hit: 'glass', bpm: [104, 128], ring: 1.4,
-    chords: [[5, 9, 0, 4], [4, 8, 11, 2], [9, 0, 4, 7, 11], [7, 11, 2, 4]], chordMinutes: 20,
-    floor: 0.45, trim: 1.03, solo: 11.5,
-    low: [140, -2], high: [6000, 1], comp: [-22, 2.5], reverb: 0.4, echo: 0.39, echoMix: 0.18, width: 1
+    voice: 's("gm_celesta").room(.4).roomsize(4).delay(.18).delaytime(.39).delayfeedback(.3).lpf(6000)',
+    hit: 's("white").bandf(4800).bandq(3).decay(.05).sustain(0).gain(.4)'
   },
   hongkong: {
-    lead: 'zheng', hit: 'block', bpm: [88, 118], ring: 1.0,
-    chords: [[0, 4, 7, 2], [7, 11, 2], [9, 0, 4], [4, 7, 11], [5, 9, 0], [0, 4, 7], [5, 9, 0, 2], [7, 11, 2, 5]], chordMinutes: 12,
-    floor: 0.45, trim: 2.68, solo: 5.5,
-    low: [200, 1.5], high: [5200, 0], comp: [-20, 3], reverb: 0.34, echo: 0.34, echoMix: 0.14, width: 0.9
+    voice: 's("gm_koto").room(.34).roomsize(2.5).delay(.14).delaytime(.34).delayfeedback(.28).lpf(5200)',
+    hit: 's("gm_woodblock").note(76).gain(.6)'
   }
 }
 
-const LEAD = 0.03
-const MAX_STRINGS = 240
-const SWELL_GAP = 0.07
-const ATTACK = { epiano: 0.004, guitar: 0.003, bell: 0.0035, zheng: 0.0035 }
-const GAIN = { epiano: 0.08, guitar: 0.075, bell: 0.065, zheng: 0.07 }
+const CITY_MIX = {
+  nyc: {
+    bpm: [84, 106], ring: 0.9, chords: [[2, 5, 9, 0, 4], [7, 11, 5, 4, 9], [0, 4, 7, 11, 2], [9, 1, 7, 10, 4]], chordMinutes: 20,
+    floor: 0.45, trim: 0.74, solo: 21, width: 0.85
+  },
+  madrid: {
+    bpm: [92, 124], ring: 0.8, chords: [[9, 0, 4], [7, 11, 2], [5, 9, 0], [4, 8, 11]], chordMinutes: 15,
+    floor: 0.45, trim: 2.34, solo: 9, width: 0.7
+  },
+  tokyo: {
+    bpm: [104, 128], ring: 1.4, chords: [[5, 9, 0, 4], [4, 8, 11, 2], [9, 0, 4, 7, 11], [7, 11, 2, 4]], chordMinutes: 20,
+    floor: 0.45, trim: 0.84, solo: 11.5, width: 1
+  },
+  hongkong: {
+    bpm: [88, 118], ring: 1.0, chords: [[0, 4, 7, 2], [7, 11, 2], [9, 0, 4], [4, 7, 11], [5, 9, 0], [0, 4, 7], [5, 9, 0, 2], [7, 11, 2, 5]], chordMinutes: 12,
+    floor: 0.45, trim: 5.56, solo: 5.5, width: 0.9
+  }
+}
 
+const LEAD = 0.05
+const MAX_STRINGS = 240
+const SWELL_GAP = 0.3
+const GAIN = 0.5
+const HOVER = 0.35
+const HIT_NOTE = 72
+const UI_ORBIT = 99
+const KINDS = ['voice', 'hit']
+const STORE = 'transit-sonified:strudel:'
+const BANKS = [
+  'https://raw.githubusercontent.com/felixroos/dough-samples/main/Dirt-Samples.json',
+  'https://raw.githubusercontent.com/felixroos/dough-samples/main/tidal-drum-machines.json'
+]
+
+const wait = (ms, value) => new Promise((resolve) => setTimeout(() => resolve(value), ms))
 const clampPan = (p) => Math.max(-0.95, Math.min(0.95, p || 0))
 const clamp01 = (x) => Math.max(0, Math.min(1, x))
 
-function impulse (ctx, seconds) {
-  const rate = ctx.sampleRate
-  const len = Math.floor(rate * seconds)
-  const buf = ctx.createBuffer(2, len, rate)
-  for (let ch = 0; ch < 2; ch++) {
-    const data = buf.getChannelData(ch)
-    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6)
+function values (haps) {
+  const out = []
+  for (const h of haps) {
+    const v = typeof h.value === 'string' ? { s: h.value } : h.value
+    if (v && typeof v === 'object' && !Array.isArray(v)) out.push(v)
   }
-  return buf
+  return out
 }
 
-function oscillator (ctx, type, freq) {
-  const o = ctx.createOscillator()
-  o.type = type
-  o.frequency.value = freq
-  return o
+function soundsOf (pat) {
+  const seen = new Map()
+  let haps = []
+  try { haps = pat.queryArc(0, 24) } catch { return [] }
+  for (const v of values(haps.slice(0, 4000))) {
+    const s = String(v.s ?? 'triangle').toLowerCase()
+    const key = s + ':' + (v.n ?? 0) + ':' + (v.note ?? '')
+    if (!seen.has(key)) seen.set(key, { s, n: v.n, note: v.note })
+  }
+  return [...seen.values()]
 }
 
-function voice (chain, kind, freq, pan, hue, dest) {
-  const ctx = chain.ctx
-  const out = ctx.createStereoPanner()
-  out.pan.value = clampPan(pan)
-  out.connect(dest || chain.voiceBus)
-  const amp = ctx.createGain()
-  amp.gain.value = 0
-  const oscs = []
-  const links = []
-  let bright
-  let lo
-  let hi
-  let tb
-  let glide = null
-  if (kind === 'epiano') {
-    const car = oscillator(ctx, 'sine', freq)
-    const mod = oscillator(ctx, 'sine', freq)
-    const mg = ctx.createGain()
-    mg.gain.value = freq * 0.04
-    mod.connect(mg).connect(car.frequency)
-    const trem = ctx.createGain()
-    trem.gain.value = 1
-    chain.tremDepth.connect(trem.gain)
-    links.push(() => chain.tremDepth.disconnect(trem.gain))
-    car.connect(amp).connect(trem).connect(out)
-    oscs.push(car, mod)
-    bright = mg.gain
-    lo = freq * 0.04
-    hi = (b) => freq * (0.5 + 0.9 * b + hue * 0.3)
-    tb = 0.09
-  } else if (kind === 'guitar') {
-    const tri = oscillator(ctx, 'triangle', freq)
-    const saw = oscillator(ctx, 'sawtooth', freq)
-    saw.detune.value = 4
-    const sg = ctx.createGain()
-    sg.gain.value = 0.28
-    const lp = ctx.createBiquadFilter()
-    lp.type = 'lowpass'
-    lp.Q.value = 0.9
-    lp.frequency.value = 420
-    const body = ctx.createBiquadFilter()
-    body.type = 'peaking'
-    body.frequency.value = 210
-    body.Q.value = 1.1
-    body.gain.value = 4
-    tri.connect(lp)
-    saw.connect(sg).connect(lp)
-    lp.connect(body).connect(amp).connect(out)
-    oscs.push(tri, saw)
-    bright = lp.frequency
-    lo = 420
-    hi = (b) => 1300 + 2000 * b + hue * 800
-    tb = 0.08
-  } else if (kind === 'zheng') {
-    const saw = oscillator(ctx, 'sawtooth', freq)
-    const tri = oscillator(ctx, 'triangle', freq)
-    const tg = ctx.createGain()
-    tg.gain.value = 0.6
-    const vg = ctx.createGain()
-    vg.gain.value = freq * 0.0035
-    chain.vib.connect(vg).connect(saw.frequency)
-    links.push(() => chain.vib.disconnect(vg))
-    const lp = ctx.createBiquadFilter()
-    lp.type = 'lowpass'
-    lp.Q.value = 1.6
-    lp.frequency.value = 620
-    const body = ctx.createBiquadFilter()
-    body.type = 'peaking'
-    body.frequency.value = 1100
-    body.Q.value = 2
-    body.gain.value = 3
-    saw.connect(lp)
-    tri.connect(tg).connect(lp)
-    lp.connect(body).connect(amp).connect(out)
-    oscs.push(saw, tri)
-    bright = lp.frequency
-    lo = 620
-    hi = (b) => 1900 + 2200 * b + hue * 1000
-    tb = 0.12
-    glide = saw.frequency
-  } else {
-    const car = oscillator(ctx, 'sine', freq)
-    const mod = oscillator(ctx, 'sine', freq * 3.5)
-    const mg = ctx.createGain()
-    mg.gain.value = freq * 0.03
-    mod.connect(mg).connect(car.frequency)
-    car.connect(amp).connect(out)
-    oscs.push(car, mod)
-    bright = mg.gain
-    lo = freq * 0.03
-    hi = (b) => freq * (0.8 + 1.2 * b + hue * 0.4)
-    tb = 0.14
-  }
-  const begin = ctx.currentTime
-  for (const o of oscs) o.start(begin)
-  oscs[0].onended = () => {
-    out.disconnect()
-    for (const l of links) l()
-  }
-  const atk = ATTACK[kind]
-  const g = GAIN[kind]
+function readSaved (city) {
+  try { return JSON.parse(localStorage.getItem(STORE + city) || 'null') } catch { return null }
+}
+
+function writeSaved (city, code) {
+  try {
+    const def = CITY_CODE[city]
+    if (code.voice === def.voice && code.hit === def.hit) localStorage.removeItem(STORE + city)
+    else localStorage.setItem(STORE + city, JSON.stringify(code))
+  } catch { }
+}
+
+function tone () {
   return {
     peak: 0,
-    decayAt: begin,
+    decayAt: -1e9,
     tau: 1,
     last: -1e9,
     struck: -1e9,
     ring: 0,
-    until: begin + 1,
-    done: false,
+    until: -1e9,
     level (t) {
       return t < this.decayAt ? this.peak : this.peak * Math.exp(-(t - this.decayAt) / this.tau)
     },
     alive (t) {
-      return !this.done && t < this.until - 0.03
+      return t < this.until - 0.03
     },
-    shape (t, peak, rise, hold, length, b, rb) {
-      const d = t + hold
-      const tau = Math.max(0.05, length / 5)
-      amp.gain.cancelScheduledValues(t)
-      amp.gain.setTargetAtTime(peak * g, t, rise)
-      amp.gain.setTargetAtTime(0, d, tau)
-      bright.cancelScheduledValues(t)
-      bright.setTargetAtTime(hi(clamp01(b)), t, rb)
-      bright.setTargetAtTime(lo, d, tb)
+    shape (t, peak, hold, length) {
       this.peak = peak
-      this.decayAt = d
-      this.tau = tau
+      this.decayAt = t + hold
+      this.tau = Math.max(0.05, length / 5)
       this.last = t
-      this.until = d + tau * 6
-      for (const o of oscs) o.stop(this.until + 0.05)
+      this.until = this.decayAt + this.tau * 6
     },
-    strike (t, level, length, b) {
-      const now = this.level(t)
-      if (glide && now < level * 0.1) {
-        glide.cancelScheduledValues(t)
-        glide.setValueAtTime(freq * 0.97, t)
-        glide.setTargetAtTime(freq, t, 0.025)
-      }
-      this.shape(t, Math.min(level * 1.4, Math.hypot(now, level)), atk, atk * 5, length, b, atk * 1.5)
+    strike (t, level, length) {
+      this.shape(t, Math.min(level * 1.4, Math.hypot(this.level(t), level)), length * 0.35, length)
       this.struck = t
       this.ring = length
     },
     blends (t) {
       return t - this.struck < this.ring * 1.2
     },
-    swell (t, level, length, b) {
-      const now = this.level(t)
+    swell (t, level, length) {
       const lift = level * 0.5
-      if (now >= lift) return false
-      this.shape(t, lift, 0.03, 0.04, length * 0.7, b * 0.5, 0.04)
+      if (this.level(t) >= lift) return false
+      this.shape(t, lift, 0.04, length * 0.7)
       return true
-    },
-    stop (t) {
-      if (this.done) return
-      this.done = true
-      amp.gain.cancelScheduledValues(t)
-      amp.gain.setTargetAtTime(0, t, 0.015)
-      for (const o of oscs) o.stop(t + 0.12)
     }
   }
 }
@@ -225,18 +139,22 @@ function voice (chain, kind, freq, pan, hue, dest) {
 export const CitySound = {
   ctx: null,
   master: null,
-  bus: null,
-  voiceBus: null,
-  noise: null,
   limiter: null,
-  mixChain: null,
-  ui: null,
+  gate: null,
+  bus: null,
+  trim: null,
+  uiTrim: null,
+  noise: null,
+  orbit: 0,
+  orbitSeq: 0,
+  buses: new Map(),
   lead: LEAD,
   selGain: 1,
   city: 'nyc',
   volume: 0.5,
   unlocked: false,
   live: false,
+  loading: false,
   voices: 0,
   strings: new Map(),
   lines: new Map(),
@@ -251,111 +169,114 @@ export const CitySound = {
   sounded: 0,
   swelled: 0,
   capped: 0,
+  notes: 0,
+  late: 0,
+  errors: 0,
+  lastError: '',
   freezeTimer: 0,
   swoopTimer: 0,
+  prepToken: 0,
+  patterns: new Map(),
+  cache: new Map(),
+  failed: new Set(),
+  badNotes: new Set(),
+  prepared: new Set(),
+  wired: false,
+  banks: null,
   log: null,
 
-  buildChain (ctx, open) {
-    const c = { ctx }
-    c.master = ctx.createGain()
-    c.master.gain.value = this.volume
-    c.gate = ctx.createGain()
-    c.gate.gain.value = open ? 1 : 0
+  ensureContext () {
+    if (this.ctx) return
+    const AC = window.AudioContext || window.webkitAudioContext
+    const ctx = new AC({ latencyHint: 'interactive' })
+    this.ctx = ctx
+    this.master = ctx.createGain()
+    this.master.gain.value = this.volume
     const limiter = ctx.createDynamicsCompressor()
     limiter.threshold.value = -6
     limiter.knee.value = 6
     limiter.ratio.value = 12
     limiter.attack.value = 0.004
     limiter.release.value = 0.3
-    c.limiter = limiter
-    c.master.connect(c.gate).connect(limiter).connect(ctx.destination)
-    c.bus = ctx.createGain()
-    c.bus.gain.value = 0.9
-    c.trim = ctx.createGain()
-    c.low = ctx.createBiquadFilter()
-    c.low.type = 'lowshelf'
-    c.high = ctx.createBiquadFilter()
-    c.high.type = 'highshelf'
-    c.comp = ctx.createDynamicsCompressor()
-    c.comp.knee.value = 10
-    c.comp.attack.value = 0.015
-    c.comp.release.value = 0.3
-    c.bus.connect(c.trim).connect(c.low).connect(c.high).connect(c.comp).connect(c.master)
-    const reverb = ctx.createConvolver()
-    reverb.buffer = impulse(ctx, 3.2)
-    c.reverbWet = ctx.createGain()
-    c.comp.connect(reverb).connect(c.reverbWet).connect(c.master)
-    c.delay = ctx.createDelay(2)
-    const fb = ctx.createGain()
-    fb.gain.value = 0.28
-    const tone = ctx.createBiquadFilter()
-    tone.type = 'lowpass'
-    tone.frequency.value = 2400
-    c.delaySend = ctx.createGain()
-    c.comp.connect(c.delaySend).connect(c.delay)
-    c.delay.connect(tone).connect(fb).connect(c.delay)
-    tone.connect(c.master)
-    c.noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate)
-    const data = c.noise.getChannelData(0)
+    this.limiter = limiter
+    this.master.connect(limiter).connect(ctx.destination)
+    this.gate = ctx.createGain()
+    this.gate.gain.value = 0
+    this.trim = ctx.createGain()
+    this.bus = ctx.createGain()
+    this.bus.gain.value = 0.9
+    this.bus.connect(this.trim).connect(this.gate).connect(this.master)
+    this.uiTrim = ctx.createGain()
+    this.uiTrim.connect(this.master)
+    this.noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate)
+    const data = this.noise.getChannelData(0)
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
-    const trem = ctx.createOscillator()
-    trem.frequency.value = 5.2
-    c.tremDepth = ctx.createGain()
-    c.tremDepth.gain.value = 0.05
-    trem.connect(c.tremDepth)
-    trem.start()
-    c.vib = ctx.createOscillator()
-    c.vib.frequency.value = 5.5
-    c.vib.start()
-    c.voiceBus = ctx.createGain()
-    c.voiceBus.connect(c.bus)
-    return c
-  },
-
-  ensureContext () {
-    if (this.ctx) return
-    const AC = window.AudioContext || window.webkitAudioContext
-    const mix = this.buildChain(new AC(), false)
-    this.mixChain = mix
-    this.ctx = mix.ctx
-    this.master = mix.master
-    this.limiter = mix.limiter
-    this.bus = mix.bus
-    this.noise = mix.noise
-    this.voiceBus = mix.voiceBus
-    this.ui = this.buildChain(new AC(), true)
-    const ui = this.ui.ctx
-    this.unlocked = ui.state === 'running'
-    ui.onstatechange = () => { if (ui.state === 'running') this.unlocked = true }
-    if (!this.live && this.ctx.state === 'running') this.ctx.suspend()
+    this.unlocked = ctx.state === 'running'
+    ctx.onstatechange = () => { if (ctx.state === 'running') this.unlocked = true }
+    this.newOrbit()
     this.applyCity()
   },
 
-  newVoiceBus () {
-    this.voiceBus = this.ctx.createGain()
-    this.voiceBus.gain.value = this.selGain
-    this.voiceBus.connect(this.bus)
-    this.mixChain.voiceBus = this.voiceBus
+  wire () {
+    if (this.wired || !S || !this.ctx) return
+    this.wired = true
+    S.setAudioContext(this.ctx)
+    S.setLogger((msg) => { if (String(msg).includes('skip hap')) this.late++ })
+    S.setMaxPolyphony(256)
+    S.initAudio({ maxPolyphony: 256 }).catch(() => {})
+    const ctl = S.getSuperdoughAudioController()
+    const make = ctl.getOrbit.bind(ctl)
+    ctl.getOrbit = (n, channels) => {
+      const fresh = !ctl.nodes[n]
+      const orbit = make(n, channels)
+      if (fresh) {
+        orbit.output.disconnect()
+        orbit.output.connect(n === UI_ORBIT ? this.uiTrim : this.orbitBus(n))
+      }
+      return orbit
+    }
+  },
+
+  orbitBus (n) {
+    let g = this.buses.get(n)
+    if (!g) {
+      g = this.ctx.createGain()
+      g.gain.value = n === this.orbit ? this.selGain : 0
+      g.connect(this.bus)
+      this.buses.set(n, g)
+    }
+    return g
+  },
+
+  newOrbit () {
+    this.orbit = ++this.orbitSeq
+    if (this.orbit === UI_ORBIT) this.orbit = ++this.orbitSeq
+    this.orbitBus(this.orbit)
+  },
+
+  dropOrbit (n) {
+    const ctl = S && this.wired ? S.getSuperdoughAudioController() : null
+    if (ctl?.nodes[n]) { ctl.nodes[n].disconnect(); delete ctl.nodes[n] }
+    const g = this.buses.get(n)
+    if (g) { g.disconnect(); this.buses.delete(n) }
   },
 
   release (tau) {
-    const old = this.voiceBus
-    const strings = [...this.strings.values()]
+    const old = this.orbit
     this.strings.clear()
     this.lines.clear()
     this.voices = 0
     this.beats = []
-    const now = this.ctx.currentTime
-    if (this.ctx.state === 'running') {
-      old.gain.cancelScheduledValues(now)
-      old.gain.setTargetAtTime(0, now, tau)
-      for (const v of strings) v.stop(now + tau * 7)
-      setTimeout(() => old.disconnect(), tau * 7000 + 400)
+    const g = this.buses.get(old)
+    if (this.ctx.state === 'running' && g) {
+      const now = this.ctx.currentTime
+      g.gain.cancelScheduledValues(now)
+      g.gain.setTargetAtTime(0, now, tau)
+      setTimeout(() => this.dropOrbit(old), tau * 7000 + 400)
     } else {
-      old.disconnect()
-      for (const v of strings) v.stop(now)
+      this.dropOrbit(old)
     }
-    this.newVoiceBus()
+    this.newOrbit()
   },
 
   soloGain (share, lines) {
@@ -371,31 +292,168 @@ export const CitySound = {
 
   mix () { return CITY_MIX[this.city] },
 
+  sources (city) {
+    const saved = this.patterns.get(city) ? null : readSaved(city)
+    const p = this.patterns.get(city)
+    return {
+      voice: p ? p.voice.src : saved?.voice ?? CITY_CODE[city].voice,
+      hit: p ? p.hit.src : saved?.hit ?? CITY_CODE[city].hit
+    }
+  },
+
+  patternsFor (city) {
+    let p = this.patterns.get(city)
+    if (p || !S) return p || null
+    const src = this.sources(city)
+    p = {}
+    for (const kind of KINDS) {
+      try { p[kind] = { src: src[kind], pat: S.compile(src[kind]) } } catch { p[kind] = { src: CITY_CODE[city][kind], pat: S.compile(CITY_CODE[city][kind]) } }
+    }
+    this.patterns.set(city, p)
+    return p
+  },
+
+  code (city) {
+    return this.sources(city)
+  },
+
+  isDefault (city) {
+    const c = this.code(city)
+    return c.voice === CITY_CODE[city].voice && c.hit === CITY_CODE[city].hit
+  },
+
+  async setCode (city, next) {
+    await engine
+    const p = {}
+    for (const kind of KINDS) {
+      try { p[kind] = { src: next[kind], pat: S.compile(next[kind]) } } catch (e) { return kind + ': ' + (e?.message || String(e)) }
+    }
+    const missing = []
+    for (const kind of KINDS) {
+      for (const { s } of soundsOf(p[kind].pat)) {
+        if (!S.getSound(s)) await this.loadBanks()
+        if (!S.getSound(s) && !missing.includes(s)) missing.push(s)
+      }
+    }
+    if (missing.length) return 'unknown sound: ' + missing.join(', ')
+    this.patterns.set(city, p)
+    writeSaved(city, { voice: next.voice, hit: next.hit })
+    this.cache.clear()
+    this.prepared.delete(city)
+    if (city === this.city) await this.prepare(city)
+    return null
+  },
+
+  resetCode (city) {
+    return this.setCode(city, CITY_CODE[city])
+  },
+
+  loadBanks () {
+    if (!this.banks) this.banks = Promise.allSettled(BANKS.map((u) => S.samples(u)))
+    return this.banks
+  },
+
+  async preload (city) {
+    const p = this.patternsFor(city)
+    const sc = CITY_SCALES[city]
+    const notes = []
+    for (let m = sc.lowMidi - 1; m <= sc.lowMidi + 12 * sc.octaves + 13; m++) notes.push(m)
+    const jobs = []
+    for (const kind of KINDS) {
+      for (const { s, n, note } of soundsOf(p[kind].pat)) {
+        if (!S.getSound(s)) await this.loadBanks()
+        const snd = S.getSound(s)
+        if (!snd) { this.failed.add(s); continue }
+        const type = snd.data?.type
+        const ns = kind === 'voice' ? notes : [note ?? HIT_NOTE]
+        const check = (job, m) => jobs.push(Promise.race([job.then(() => true, () => false), wait(3000, false)]).then((ok) => { if (!ok) this.badNotes.add(s + ':' + m) }))
+        if (type === 'soundfont') {
+          const fonts = snd.data.fonts
+          const font = fonts[S.getSoundIndex(n, fonts.length)]
+          for (const m of ns) check(S.getFontBufferSource(font, { note: m }, this.ctx), m)
+        } else if (type === 'sample') {
+          for (const m of ns) check(S.getSampleBuffer({ s, n, note: m }, snd.data.samples), m)
+        }
+      }
+    }
+    await Promise.all(jobs)
+  },
+
+  async prepare (city) {
+    if (!this.ctx) return
+    const token = ++this.prepToken
+    if (!this.prepared.has(city)) this.loading = true
+    try {
+      await engine
+      this.wire()
+      await Promise.race([this.preload(city), wait(12000)])
+      this.prepared.add(city)
+    } catch (e) {
+      this.errors++
+      this.lastError = String(e?.message || e)
+    }
+    if (token !== this.prepToken) return
+    this.loading = false
+    for (const other of Object.keys(CITY_CODE)) {
+      if (other !== city && !this.prepared.has(other)) this.preload(other).then(() => this.prepared.add(other), () => {})
+    }
+  },
+
+  layers (kind, sec) {
+    const key = kind + '|' + this.city + '|' + Math.floor(sec / 60)
+    let out = this.cache.get(key)
+    if (out) return out
+    const p = this.patternsFor(this.city)
+    if (!p) return []
+    const c = sec / 3600
+    try { out = values(p[kind].pat.queryArc(c, c + 1e-6)) } catch (e) { out = []; this.errors++; this.lastError = String(e?.message || e) }
+    if (this.cache.size > 64) this.cache.clear()
+    this.cache.set(key, out)
+    return out
+  },
+
+  playable (s, note) {
+    const name = String(s ?? 'triangle').toLowerCase()
+    if (this.failed.has(name)) return ['triangle', note]
+    if (typeof note !== 'number' || !this.badNotes.has(name + ':' + note)) return [s ?? 'triangle', note]
+    for (const m of [note - 12, note + 12, note - 24]) if (!this.badNotes.has(name + ':' + m)) return [s, m]
+    return ['triangle', note]
+  },
+
+  play (layers, note, pan, at, gain, length, soft, orbit) {
+    for (const l of layers) {
+      const [s, n] = this.playable(l.s, note ?? l.note ?? HIT_NOTE)
+      const v = {
+        ...l,
+        s,
+        note: n,
+        orbit,
+        pan: 0.5 + 0.5 * clampPan(pan),
+        gain: (l.gain ?? 1) * gain * GAIN,
+        attack: l.attack ?? (soft ? 0.03 : 0.004),
+        release: l.release ?? Math.max(0.12, length * 0.7)
+      }
+      this.notes++
+      S.superdough(v, at, l.duration ?? Math.max(0.05, length * 0.35)).catch((e) => { this.errors++; this.lastError = String(e?.message || e) })
+    }
+  },
+
   applyCity () {
     if (!this.ctx) return
     const m = this.mix()
-    for (const c of [this.mixChain, this.ui]) {
-      const t = c.ctx.currentTime
-      c.low.frequency.setTargetAtTime(m.low[0], t, 0.4)
-      c.low.gain.setTargetAtTime(m.low[1], t, 0.4)
-      c.high.frequency.setTargetAtTime(m.high[0], t, 0.4)
-      c.high.gain.setTargetAtTime(m.high[1], t, 0.4)
-      c.comp.threshold.setTargetAtTime(m.comp[0], t, 0.4)
-      c.comp.ratio.setTargetAtTime(m.comp[1], t, 0.4)
-      c.reverbWet.gain.setTargetAtTime(m.reverb, t, 0.4)
-      c.delay.delayTime.setTargetAtTime(m.echo, t, 0.4)
-      c.delaySend.gain.setTargetAtTime(m.echoMix, t, 0.4)
-      c.trim.gain.setTargetAtTime(m.trim, t, 0.4)
-    }
+    const t = this.ctx.currentTime
+    this.trim.gain.setTargetAtTime(m.trim, t, 0.4)
+    this.uiTrim.gain.setTargetAtTime(m.trim, t, 0.4)
     this.beats = []
     this.lines.clear()
     this.bpm = this.targetBpm()
+    this.prepare(this.city)
   },
 
   setVolume (v) {
     this.volume = v
     if (!this.ctx) return
-    for (const c of [this.mixChain, this.ui]) c.master.gain.setTargetAtTime(v, c.ctx.currentTime, 0.05)
+    this.master.gain.setTargetAtTime(v, this.ctx.currentTime, 0.05)
   },
 
   setCity (city) {
@@ -416,21 +474,19 @@ export const CitySound = {
     this.ensureContext()
     clearTimeout(this.freezeTimer)
     const ctx = this.ctx
-    const gate = this.mixChain.gate.gain
+    const gate = this.gate.gain
     const open = () => {
       gate.cancelScheduledValues(ctx.currentTime)
       gate.setTargetAtTime(1, ctx.currentTime, 0.015)
     }
-    const wake = [ctx.resume().then(open, () => {})]
-    if (this.ui.ctx.state !== 'running') wake.push(this.ui.ctx.resume().catch(() => {}))
-    return Promise.all(wake)
+    return ctx.resume().then(open, () => {})
   },
 
   freeze () {
     this.live = false
     const ctx = this.ctx
     if (!ctx || ctx.state !== 'running') return
-    const gate = this.mixChain.gate.gain
+    const gate = this.gate.gain
     gate.cancelScheduledValues(ctx.currentTime)
     gate.setTargetAtTime(0, ctx.currentTime, 0.012)
     clearTimeout(this.freezeTimer)
@@ -457,10 +513,10 @@ export const CitySound = {
     return m.chords[(i + n) % n]
   },
 
-  string (key, e, at) {
+  string (key, at) {
     const v = this.strings.get(key)
     if (v && v.alive(at)) return v
-    if (v) { v.stop(this.ctx.currentTime); this.strings.delete(key) }
+    if (v) this.strings.delete(key)
     if (this.strings.size >= MAX_STRINGS) {
       let worst = null
       let quietest = Infinity
@@ -468,12 +524,10 @@ export const CitySound = {
         const l = s.level(at)
         if (l < quietest) { quietest = l; worst = k }
       }
-      this.strings.get(worst).stop(this.ctx.currentTime)
       this.strings.delete(worst)
       this.capped++
     }
-    const m = this.mix()
-    const s = voice(this.mixChain, m.lead, e.freq, e.pan * m.width, e.hue, null)
+    const s = tone()
     this.strings.set(key, s)
     return s
   },
@@ -486,13 +540,14 @@ export const CitySound = {
 
   departures (evs, from, to, dt) {
     const out = new Array(evs.length).fill(false)
-    if (!evs.length || !this.ctx || this.ctx.state !== 'running') return out
+    if (!evs.length || !this.wired || this.ctx.state !== 'running' || this.loading) return out
     const m = this.mix()
     const start = this.ctx.currentTime + LEAD
     const span = Math.max(1e-6, to - from)
     const stretch = Math.min(0.1, Math.max(0, dt || 0))
     this.scheduleTime = to
     const chord = this.chord()
+    const voice = this.layers('voice', to)
     const a = this.activity
     const base = m.floor + (1 - m.floor) * a
     const low = CITY_SCALES[this.city].lowMidi
@@ -508,36 +563,38 @@ export const CitySound = {
       groups.set(key, { key, e, n: 1, velocity: e.velocity, idx: [i] })
     }
     const when = (sec, midi) => start + clamp01((sec - from) / span) * stretch + clamp01((midi - low) / 24) * 0.006
-    for (const g of groups.values()) {
-      const e = g.e
-      const at = when(e.sec, e.midi)
-      const tone = chord.includes(((e.midi % 12) + 12) % 12)
-      const length = m.ring * (tone ? 1.25 : 0.8) * (1 - 0.35 * a)
-      const level = base * this.poly * (0.55 + 0.45 * g.velocity) * (tone ? 1 : 0.62) * (e.freq > 800 ? 0.82 : 1) * Math.min(1.4, Math.sqrt(g.n))
-      const key = this.city + '|' + g.key
-      const held = this.strings.get(key)
-      let heard = false
-      const b = 0.15 + 0.25 * g.velocity + 0.15 * a
-      if (held && held.alive(at) && held.blends(at)) {
-        if (at - held.last >= SWELL_GAP && held.swell(at, level, length, b)) {
-          this.swelled++
-          if (this.log) this.log.push({ at, sec: e.sec, freq: e.freq, midi: e.midi, level: level * 0.5, tone, swell: true, routes: [e.route], stop: e.stop_name })
-        }
-        heard = true
-      } else {
-        const line = this.line(e.route)
-        let slot = line.busy.findIndex((t) => t <= at)
-        if (slot < 0 && line.busy.length < this.perLine) slot = line.busy.length
-        if (slot >= 0) {
-          const s = this.string(key, e, at)
-          s.strike(at, level, length, b)
-          line.busy[slot] = at + length * 0.7
+    if (voice.length) {
+      for (const g of groups.values()) {
+        const e = g.e
+        const at = when(e.sec, e.midi)
+        const tone = chord.includes(((e.midi % 12) + 12) % 12)
+        const length = m.ring * (tone ? 1.25 : 0.8) * (1 - 0.35 * a)
+        const level = base * this.poly * (0.55 + 0.45 * g.velocity) * (tone ? 1 : 0.62) * (e.freq > 800 ? 0.82 : 1) * Math.min(1.4, Math.sqrt(g.n))
+        const key = this.city + '|' + g.key
+        const held = this.strings.get(key)
+        let heard = false
+        if (held && held.alive(at) && held.blends(at)) {
+          if (at - held.last >= SWELL_GAP && held.swell(at, level, length)) {
+            this.play(voice, e.midi, e.pan * m.width, at, level * 0.5, length * 0.7, true, this.orbit)
+            this.swelled++
+            if (this.log) this.log.push({ at, sec: e.sec, freq: e.freq, midi: e.midi, level: level * 0.5, tone, swell: true, routes: [e.route], stop: e.stop_name })
+          }
           heard = true
-          this.sounded++
-          if (this.log) this.log.push({ at, sec: e.sec, freq: e.freq, midi: e.midi, level, tone, routes: [e.route], stop: e.stop_name })
+        } else {
+          const line = this.line(e.route)
+          let slot = line.busy.findIndex((t) => t <= at)
+          if (slot < 0 && line.busy.length < this.perLine) slot = line.busy.length
+          if (slot >= 0) {
+            this.string(key, at).strike(at, level, length)
+            this.play(voice, e.midi, e.pan * m.width, at, level, length, false, this.orbit)
+            line.busy[slot] = at + length * 0.7
+            heard = true
+            this.sounded++
+            if (this.log) this.log.push({ at, sec: e.sec, freq: e.freq, midi: e.midi, level, tone, routes: [e.route], stop: e.stop_name })
+          }
         }
+        if (heard) for (const i of g.idx) out[i] = true
       }
-      if (heard) for (const i of g.idx) out[i] = true
     }
     let hits = 0
     let hitSec = Infinity
@@ -553,7 +610,7 @@ export const CitySound = {
       const at = when(hitSec, low)
       if (at - this.lastHit >= 30 / (this.bpm || 100)) {
         this.lastHit = at
-        this.hit(this.mixChain, at, base * this.poly * 1.6 * Math.min(1.6, Math.sqrt(hits)))
+        this.play(this.layers('hit', to), null, -0.1, at, base * this.poly * 1.6 * Math.min(1.6, Math.sqrt(hits)), 0.2, false, this.orbit)
         this.beats.push(at)
         if (this.beats.length > 16) this.beats.shift()
         if (this.log) this.log.push({ at, kind: 'hit', count: hits })
@@ -566,12 +623,7 @@ export const CitySound = {
   reap () {
     if (!this.ctx) return
     const now = this.ctx.currentTime
-    for (const [k, v] of this.strings) {
-      if (!v.alive(now)) {
-        v.stop(now)
-        this.strings.delete(k)
-      }
-    }
+    for (const [k, v] of this.strings) if (!v.alive(now)) this.strings.delete(k)
     this.voices = this.strings.size
   },
 
@@ -583,55 +635,21 @@ export const CitySound = {
     return last < 0 ? 0 : Math.exp(-(now - last) / 0.18)
   },
 
-  once (chain, freq, pan, hue, t, level, length, dest, b) {
-    const v = voice(chain, this.mix().lead, freq, pan, hue, dest)
-    v.strike(t, level, length, b)
-  },
-
-  hit (chain, time, level) {
-    const ctx = chain.ctx
-    const kind = this.mix().hit
-    const burst = (at, freq, q, type, peak, len, pan) => {
-      const src = ctx.createBufferSource()
-      src.buffer = chain.noise
-      const f = ctx.createBiquadFilter()
-      f.type = type
-      f.frequency.value = freq
-      f.Q.value = q
-      const g = ctx.createGain()
-      g.gain.setValueAtTime(0, at)
-      g.gain.setTargetAtTime(peak, at, 0.0015)
-      g.gain.setTargetAtTime(0, at + 0.006, len / 4)
-      const p = ctx.createStereoPanner()
-      p.pan.value = pan
-      src.connect(f).connect(g).connect(p).connect(chain.voiceBus)
-      src.onended = () => p.disconnect()
-      src.start(at, Math.random() * 0.5)
-      src.stop(at + len * 1.6 + 0.05)
-    }
-    const l = Math.min(1, level)
-    if (kind === 'brush') burst(time, 2600, 0.5, 'bandpass', 0.02 * l, 0.22, -0.25)
-    else if (kind === 'palma') {
-      burst(time, 1500, 1.1, 'bandpass', 0.026 * l, 0.08, -0.15)
-      burst(time + 0.016, 2000, 1.1, 'bandpass', 0.014 * l, 0.07, 0.2)
-    } else if (kind === 'block') burst(time, 1250, 6, 'bandpass', 0.04 * l, 0.08, 0.2)
-    else burst(time, 4800, 3, 'bandpass', 0.012 * l, 0.06, 0.3)
-  },
-
-  playNote ({ freq, pan = 0, hue = 0, velocity = 0.8 }) {
+  playNote ({ freq, pan = 0, velocity = 0.8 }) {
     if (!freq) return
     this.ensureContext()
-    const ui = this.ui
     const go = () => {
-      if (ui.ctx.state !== 'running') return
-      const t = ui.ctx.currentTime + 0.01
+      if (!this.wired || this.ctx.state !== 'running') return
+      const t = this.ctx.currentTime + 0.02
+      const midi = Math.round(69 + 12 * Math.log2(freq / 440))
       const w = this.mix().width
-      this.once(ui, freq, pan * w, hue, t, velocity, 1.4, null, 0.6)
-      this.once(ui, freq * 2, pan * w, hue, t + 0.012, velocity * 0.28, 0.9, null, 0.4)
-      if (this.log) this.log.push({ at: ui.ctx.currentTime, kind: 'hover', freq })
+      const voice = this.layers('voice', this.scheduleTime)
+      this.play(voice, midi, pan * w, t, velocity * HOVER, 1.4, false, UI_ORBIT)
+      this.play(voice, midi + 12, pan * w, t + 0.012, velocity * 0.28 * HOVER, 0.9, false, UI_ORBIT)
+      if (this.log) this.log.push({ at: this.ctx.currentTime, kind: 'hover', freq })
     }
-    if (ui.ctx.state === 'running') go()
-    else ui.ctx.resume().then(go, () => {})
+    if (this.ctx.state === 'running') go()
+    else this.ctx.resume().then(go, () => {})
   },
 
   hush () {
@@ -678,8 +696,8 @@ export const CitySound = {
   },
 
   tick (level = 0.6) {
-    if (!this.ui || this.ui.ctx.state !== 'running') return
-    const ctx = this.ui.ctx
+    if (!this.ctx || this.ctx.state !== 'running') return
+    const ctx = this.ctx
     const now = ctx.currentTime
     const osc = ctx.createOscillator()
     osc.type = 'triangle'
@@ -689,16 +707,13 @@ export const CitySound = {
     g.gain.setValueAtTime(0, now)
     g.gain.setTargetAtTime(0.03 * level, now, 0.001)
     g.gain.setTargetAtTime(0, now + 0.004, 0.008)
-    osc.connect(g).connect(this.ui.master)
+    osc.connect(g).connect(this.master)
     osc.start(now)
     osc.stop(now + 0.07)
   },
 
   resume () {
-    if (!this.ctx) return
-    const wake = []
-    if (this.ui.ctx.state !== 'running') wake.push(this.ui.ctx.resume().catch(() => {}))
-    if (this.live && this.ctx.state !== 'running') wake.push(this.ctx.resume().catch(() => {}))
-    return wake.length ? Promise.all(wake) : undefined
+    if (!this.ctx || this.ctx.state === 'running') return
+    return this.ctx.resume().catch(() => {})
   }
 }

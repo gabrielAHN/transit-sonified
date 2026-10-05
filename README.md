@@ -26,6 +26,12 @@ The schedules are queried with the [GTFS DuckDB extension](https://github.com/ga
 
 The app runs all its queries from `src/engine/queries.ts` and only voices and draws what they return. `npm run dev` and `npm run build` download the extension's browser builds from its [1.0.1 release](https://github.com/gabrielAHN/gtfs-duckdb/releases/tag/v1.0.1), check their SHA-256 sums and serve them from `/extensions`. Set `GTFS_EXTENSION_VERSION` to use another release.
 
+## Sound
+
+The notes are played with [Strudel](https://strudel.cc/workshop/getting-started/)'s audio engine. Each city's sound is a line of Strudel code (`CITY_CODE` in `src/engine/sound.js`): every departure plays its stop's note through it, and a trip's first and last stops add a hit. One cycle is one hour of the schedule, so `s("<gm_koto gm_orchestral_harp>")` changes instrument every hour.
+
+Edit a city's code live from the ♪ button in the header. Changes are saved in the browser, and Reset brings back the default. The General MIDI instruments load from Strudel's soundfont host; sample names such as `s("bd")` load the Dirt-Samples and drum-machine banks on first use. Strudel is licensed AGPL-3.0-or-later.
+
 ## Data
 
 | City | Source feed |

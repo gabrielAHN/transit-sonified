@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { AudioLines, Check, Link2 } from 'lucide-react'
+import { AudioLines, Check, Link2, Music2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { CityPicker } from '@/components/CityPicker'
 import { RoutePanel } from '@/components/RoutePanel'
 import { PlayerBar } from '@/components/ui/player-bar'
+import { StrudelPanel } from '@/components/StrudelPanel'
 import { cn } from '@/lib/utils'
 import { CITIES, cityFromSlug, type CityId } from '@/lib/cities'
 import { player } from '@/engine/player'
@@ -19,6 +20,7 @@ export default function App () {
   const mounted = useRef(false)
   const [card, setCard] = useState<{ label: string, sub: string, key: number } | null>(null)
   const [copied, setCopied] = useState(false)
+  const [soundOpen, setSoundOpen] = useState(false)
 
   useEffect(() => {
     if (!city) { navigate('/' + CITIES.nyc.slug + location.search, { replace: true }); return }
@@ -69,7 +71,23 @@ export default function App () {
           </TooltipTrigger>
           <TooltipContent side="bottom">{copied ? 'Link copied' : 'Copy link to ' + CITIES[snap.city].label}</TooltipContent>
         </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              data-testid="strudel-toggle"
+              variant="ghost" size="icon"
+              className={cn('size-7 text-muted-foreground', soundOpen && 'bg-primary/15 text-primary')}
+              onClick={() => setSoundOpen((o) => !o)}
+              aria-label="Edit the sound in Strudel"
+              aria-pressed={soundOpen}
+            >
+              <Music2 className="size-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Edit the sound in Strudel</TooltipContent>
+        </Tooltip>
       </div>
+      <StrudelPanel city={snap.city} open={soundOpen} onClose={() => setSoundOpen(false)} />
 
       {city && <CityPicker city={snap.city} loading={snap.loading} onPick={pickCity} />}
       <RoutePanel snap={snap} onPick={pickRoute} onAim={(r) => player.prefetchRoute(r)} defaultOpen={!matchMedia('(max-width: 720px)').matches} />
