@@ -30,7 +30,7 @@ The app runs all its queries from `src/engine/queries.ts` and only voices and dr
 
 The notes are played with [Strudel](https://strudel.cc/workshop/getting-started/)'s audio engine. Each city's sound is a line of Strudel code (`CITY_CODE` in `src/engine/sound.js`): every departure plays its stop's note through it, and a trip's first and last stops add a hit. One cycle is one hour of the schedule, so `s("<gm_koto gm_orchestral_harp>")` changes instrument every hour.
 
-Edit a city's code live from the ♪ button in the header. Changes are saved in the browser, and Reset brings back the default. The General MIDI instruments load from Strudel's soundfont host; sample names such as `s("bd")` load the Dirt-Samples and drum-machine banks on first use. Strudel is licensed AGPL-3.0-or-later.
+Edit a city's code live from the ♪ button in the header. Changes are saved in the browser, and Reset brings back the default. The General MIDI instruments load from Strudel's soundfont host; sample names such as `s("bd")` load the Dirt-Samples and drum-machine banks on first use.
 
 ## Data
 
@@ -54,3 +54,7 @@ railway up --detach
 `railpack.json` builds the site, and the `Caddyfile` serves `dist/`: the WASM content type, the precompressed database, and city URLs that fall back to `index.html`.
 
 The Railway service settings (GitHub source, builder, watch paths and healthcheck) live in `.railway/railway.ts`. Preview changes with `railway config plan` and apply them with `railway config apply`.
+
+## License
+
+[AGPL-3.0-or-later](LICENSE), the license of Strudel, which the site bundles. The schedules in `public/db` come from the feeds listed under [Data](#data) and keep their publishers' terms.
