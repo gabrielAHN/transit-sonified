@@ -45,7 +45,9 @@ The prebuilt database (DuckDB storage v1.4.0) ships in `public/db`, along with z
 
 ## Deploy
 
-Deploy your own copy from a checkout with the Railway CLI:
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/transit-sonified)
+
+Or deploy your own copy from a checkout with the Railway CLI:
 
 ```sh
 railway up --detach
