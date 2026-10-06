@@ -4,7 +4,7 @@ const engine = import('./strudel.js').then((m) => { S = m; return m })
 export const CITY_SCALES = {
   nyc: { scale: [0, 2, 3, 5, 7, 9, 10], lowMidi: 62, octaves: 2 },
   madrid: { scale: [0, 1, 4, 5, 7, 8, 10], lowMidi: 52, octaves: 2 },
-  tokyo: { scale: [0, 2, 3, 7, 8], lowMidi: 69, octaves: 2 },
+  tokyo: { scale: [0, 2, 3, 7, 8], lowMidi: 64, octaves: 2 },
   hongkong: { scale: [0, 2, 4, 7, 9], lowMidi: 60, octaves: 2 }
 }
 
@@ -37,8 +37,8 @@ const CITY_MIX = {
     floor: 0.45, trim: 2.34, solo: 9, width: 0.7
   },
   tokyo: {
-    bpm: [104, 128], ring: 1.4, chords: [[5, 9, 0, 4], [4, 8, 11, 2], [9, 0, 4, 7, 11], [7, 11, 2, 4]], chordMinutes: 20,
-    floor: 0.45, trim: 0.84, solo: 11.5, width: 1
+    bpm: [104, 128], ring: 1.4, chords: [[0, 4, 7, 11], [11, 3, 6, 9], [4, 7, 11, 2, 6], [2, 6, 9, 11]], chordMinutes: 20,
+    floor: 0.45, trim: 0.68, solo: 11.5, width: 1
   },
   hongkong: {
     bpm: [88, 118], ring: 1.0, chords: [[0, 4, 7, 2], [7, 11, 2], [9, 0, 4], [4, 7, 11], [5, 9, 0], [0, 4, 7], [5, 9, 0, 2], [7, 11, 2, 5]], chordMinutes: 12,
