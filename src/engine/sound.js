@@ -54,6 +54,11 @@ const HOVER = 0.35
 const HIT_NOTE = 72
 const UI_ORBIT = 99
 const KINDS = ['voice', 'hit']
+const FX_KEYS = ['room', 'roomsize', 'roomfade', 'roomlp', 'roomdim', 'delay', 'delaytime', 'delayfeedback', 'delaysync']
+const DELAY_SYNC = 3 / 16
+const FILTERS = [['cutoff', 'resonance', 'lowpass'], ['hcutoff', 'hresonance', 'highpass'], ['bandf', 'bandq', 'bandpass']]
+const FILTER_MOD = /^(lp|hp|bp)(attack|decay|sustain|release|env|rate|sync|depth|depthfrequency|shape|dc|skew)$|^(fanchor|ftype|drive)$/
+const CPS = 0.5
 const STORE = 'transit-sonified:strudel:'
 const BANKS = [
   'https://raw.githubusercontent.com/felixroos/dough-samples/main/Dirt-Samples.json',
@@ -146,8 +151,10 @@ export const CitySound = {
   uiTrim: null,
   noise: null,
   orbit: 0,
+  hitOrbit: 0,
   orbitSeq: 0,
   buses: new Map(),
+  fx: new Map(),
   lead: LEAD,
   selGain: 1,
   city: 'nyc',
@@ -231,7 +238,7 @@ export const CitySound = {
       const orbit = make(n, channels)
       if (fresh) {
         orbit.output.disconnect()
-        orbit.output.connect(n === UI_ORBIT ? this.uiTrim : this.orbitBus(n))
+        orbit.output.connect(n === UI_ORBIT ? this.uiTrim : this.orbitBus(n).input)
       }
       return orbit
     }
@@ -241,40 +248,139 @@ export const CitySound = {
     let g = this.buses.get(n)
     if (!g) {
       g = this.ctx.createGain()
-      g.gain.value = n === this.orbit ? this.selGain : 0
+      g.gain.value = n === this.orbit || n === this.hitOrbit ? this.selGain : 0
+      g.input = this.ctx.createGain()
+      g.post = this.ctx.createGain()
+      g.input.connect(g.post)
+      g.post.connect(g)
       g.connect(this.bus)
       this.buses.set(n, g)
     }
     return g
   },
 
+  busFilters (v) {
+    if (Object.keys(v).some((k) => FILTER_MOD.test(k))) return null
+    const out = []
+    for (const [f, q, type] of FILTERS) if (v[f] !== undefined) out.push({ type, f: Number(v[f]), q: Number(v[q] ?? 1) })
+    return out
+  },
+
+  orbitFilters (g, fx, v, at) {
+    const want = this.busFilters(v) || []
+    const shape = want.map((w) => w.type).join('|')
+    if (shape !== fx.shape) {
+      g.input.disconnect()
+      for (const node of fx.filters) node.disconnect()
+      fx.filters = want.map((w) => {
+        const node = this.ctx.createBiquadFilter()
+        node.type = w.type
+        node.frequency.value = w.f
+        node.Q.value = w.q
+        node.f = w.f
+        node.q = w.q
+        return node
+      })
+      let tail = g.input
+      for (const node of fx.filters) { tail.connect(node); tail = node }
+      tail.connect(g.post)
+      fx.shape = shape
+      return
+    }
+    want.forEach((w, i) => {
+      const node = fx.filters[i]
+      if (w.f !== node.f) { node.f = w.f; node.frequency.setTargetAtTime(w.f, at, 0.05) }
+      if (w.q !== node.q) { node.q = w.q; node.Q.setTargetAtTime(w.q, at, 0.05) }
+    })
+  },
+
+  orbitFx (n, v, at) {
+    const g = this.orbitBus(n)
+    let fx = this.fx.get(n)
+    if (!fx) { fx = { room: null, delay: null, filters: [], shape: '' }; this.fx.set(n, fx) }
+    this.orbitFilters(g, fx, v, at)
+    const room = Math.max(0, Number(v.room) || 0)
+    if (room > 0 || fx.room) {
+      const key = [v.roomsize, v.roomfade, v.roomlp, v.roomdim].join('|')
+      if (!fx.room) {
+        const send = this.ctx.createGain()
+        send.gain.value = room
+        const verb = this.ctx.createReverb(v.roomsize, v.roomfade, v.roomlp, v.roomdim)
+        g.post.connect(send)
+        send.connect(verb)
+        verb.connect(g)
+        fx.room = { send, verb, level: room, key }
+      } else {
+        if (key !== fx.room.key) { fx.room.key = key; fx.room.verb.generate(v.roomsize, v.roomfade, v.roomlp, v.roomdim) }
+        if (room !== fx.room.level) { fx.room.level = room; fx.room.send.gain.setTargetAtTime(room, at, 0.05) }
+      }
+    }
+    const delay = Math.max(0, Number(v.delay) || 0)
+    const time = Number(v.delaytime ?? (v.delaysync ?? DELAY_SYNC) / CPS)
+    const fb = Math.min(0.98, Math.max(0, Number(v.delayfeedback ?? 0.5)))
+    const level = delay > 0 && time > 0 && fb > 0 ? delay : 0
+    if (level > 0 || fx.delay) {
+      if (!fx.delay) {
+        const send = this.ctx.createGain()
+        send.gain.value = level
+        const node = this.ctx.createFeedbackDelay(1, time, fb)
+        g.post.connect(send)
+        send.connect(node)
+        node.connect(g)
+        node.start(at)
+        fx.delay = { send, node, level, time, fb }
+      } else {
+        const d = fx.delay
+        if (level !== d.level) { d.level = level; d.send.gain.setTargetAtTime(level, at, 0.05) }
+        if (level > 0 && time !== d.time) { d.time = time; d.node.delayTime.setValueAtTime(time, at) }
+        if (level > 0 && fb !== d.fb) { d.fb = fb; d.node.feedback.setValueAtTime(fb, at) }
+      }
+    }
+  },
+
+  nextOrbit () {
+    const n = ++this.orbitSeq
+    return n === UI_ORBIT ? ++this.orbitSeq : n
+  },
+
   newOrbit () {
-    this.orbit = ++this.orbitSeq
-    if (this.orbit === UI_ORBIT) this.orbit = ++this.orbitSeq
+    this.orbit = this.nextOrbit()
+    this.hitOrbit = this.nextOrbit()
     this.orbitBus(this.orbit)
+    this.orbitBus(this.hitOrbit)
   },
 
   dropOrbit (n) {
     const ctl = S && this.wired ? S.getSuperdoughAudioController() : null
     if (ctl?.nodes[n]) { ctl.nodes[n].disconnect(); delete ctl.nodes[n] }
+    const fx = this.fx.get(n)
+    if (fx) {
+      if (fx.room) { fx.room.send.disconnect(); fx.room.verb.disconnect() }
+      if (fx.delay) { fx.delay.send.disconnect(); fx.delay.node.disconnect(); fx.delay.node.feedbackGain.disconnect(); fx.delay.node.delayGain.disconnect() }
+      for (const node of fx.filters) node.disconnect()
+      this.fx.delete(n)
+    }
     const g = this.buses.get(n)
-    if (g) { g.disconnect(); this.buses.delete(n) }
+    if (g) { g.input.disconnect(); g.post.disconnect(); g.disconnect(); this.buses.delete(n) }
   },
 
   release (tau) {
-    const old = this.orbit
+    const old = [this.orbit, this.hitOrbit]
     this.strings.clear()
     this.lines.clear()
     this.voices = 0
     this.beats = []
-    const g = this.buses.get(old)
-    if (this.ctx.state === 'running' && g) {
+    if (this.ctx.state === 'running') {
       const now = this.ctx.currentTime
-      g.gain.cancelScheduledValues(now)
-      g.gain.setTargetAtTime(0, now, tau)
-      setTimeout(() => this.dropOrbit(old), tau * 7000 + 400)
+      for (const n of old) {
+        const g = this.buses.get(n)
+        if (!g) continue
+        g.gain.cancelScheduledValues(now)
+        g.gain.setTargetAtTime(0, now, tau)
+      }
+      setTimeout(() => { for (const n of old) this.dropOrbit(n) }, tau * 7000 + 400)
     } else {
-      this.dropOrbit(old)
+      for (const n of old) this.dropOrbit(n)
     }
     this.newOrbit()
   },
@@ -432,6 +538,12 @@ export const CitySound = {
         gain: (l.gain ?? 1) * gain * GAIN,
         attack: l.attack ?? (soft ? 0.03 : 0.004),
         release: l.release ?? Math.max(0.12, length * 0.7)
+      }
+      if (orbit !== UI_ORBIT && orbit !== this.hitOrbit && v.ir === undefined) {
+        const bus = this.busFilters(v)
+        this.orbitFx(orbit, v, at)
+        for (const k of FX_KEYS) delete v[k]
+        if (bus) for (const [f, q] of FILTERS) { delete v[f]; delete v[q] }
       }
       this.notes++
       S.superdough(v, at, l.duration ?? Math.max(0.05, length * 0.35)).catch((e) => { this.errors++; this.lastError = String(e?.message || e) })
@@ -610,7 +722,7 @@ export const CitySound = {
       const at = when(hitSec, low)
       if (at - this.lastHit >= 30 / (this.bpm || 100)) {
         this.lastHit = at
-        this.play(this.layers('hit', to), null, -0.1, at, base * this.poly * 1.6 * Math.min(1.6, Math.sqrt(hits)), 0.2, false, this.orbit)
+        this.play(this.layers('hit', to), null, -0.1, at, base * this.poly * 1.6 * Math.min(1.6, Math.sqrt(hits)), 0.2, false, this.hitOrbit)
         this.beats.push(at)
         if (this.beats.length > 16) this.beats.shift()
         if (this.log) this.log.push({ at, kind: 'hit', count: hits })
